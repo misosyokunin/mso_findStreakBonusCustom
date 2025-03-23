@@ -1,0 +1,2 @@
+# mso_findStreakBonusCustom
+MSOの連勝ボーナスを得られるカスタムを探すブックマークレットです。
