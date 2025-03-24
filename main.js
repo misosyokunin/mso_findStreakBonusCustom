@@ -26,7 +26,7 @@ Writing:
 1.このスクリプトを実行して、統計ページへ飛びます。
 2.「自分の統計」にチェックを入れます。
 3.シーズンを昨シーズンなどにします。
-4.画面下部の「収集する」を押します。
+4.画面下部の「集める」を押します。
 5.ちょっと待ちます。
 6.シーズンを探索し終わったら「終わる」ボタン押します。
 7.あとはコピペするだけです。
@@ -48,7 +48,12 @@ Writing:
 	}else{
 		const result = window.confirm(`${TAR_TITLE}ではありません。\n${TAR_TITLE}へ飛びますか？\n（ページ遷移後に再度このスクリプトを実行してください。）`);
 		if(result){
-			location.href = TAR_URL;
+			const playerID = document.querySelector("#header .profile-link")?.href.match(/\d+/)[0];
+			if(playerID){
+				location.href = `${TAR_URL}/${playerID}`;
+			}else{
+				location.href = TAR_URL;
+			}
 		}else{
 			alert(`${TAR_TITLE}（${TAR_URL}）を表示させてください。`);
 		}
@@ -87,6 +92,10 @@ async function nextPage(callback){
 /*
 		console.log(tar);
 */
+/*
+	ページネーションを操作するとstat_paginationが2回でる。
+	2回目のstat_paginationで起動させたい
+*/
 		if(tar.id === "stat_pagination"){
 			if(!isTwice){
 				isTwice = true;
@@ -105,6 +114,7 @@ async function nextPage(callback){
 	});
 	
 	const nextButton = document.querySelector("#stat_pagination > .next");
+	await Wait.time(0.5);
 	if(nextButton.classList.contains("disabled")){
 		isLooping = false;
 		observer.disconnect();
@@ -112,7 +122,6 @@ async function nextPage(callback){
 	}else{
 		nextButton.click();
 		await Wait.add();
-		await Wait.time(0.5);
 	}
 }
 
@@ -121,12 +130,14 @@ function aho(){
 	for(let i = 0; i < trs.length; i++){
 		const tr = trs[i];
 		const tds = tr.querySelectorAll("td");
-		if(tds[1].textContent === " "){
+		if(tds[1].textContent === " "){	/*空行を弾く*/
+/*
 			console.log("break");
+*/
 			break;
 		}
 		const level = tds[0].textContent;
-		if(!level.startsWith("カスタム (")){
+		if(!level.startsWith("カスタム (")){	/*カスタムNGを弾く*/
 			continue;
 		}
 		if(tds[0].querySelector(":scope > img")){	/*複雑さ1000以上を弾く*/
@@ -240,8 +251,19 @@ bk.append(bgs);
 	{
 		const button = document.createElement("button");
 		button.type = "button";
-		button.textContent = "収集する";
+		button.textContent = "集める";
 		button.addEventListener("click", async()=>{
+			if(!document.getElementById("only_my").checked){
+				if(!window.confirm("「自分の統計」にチェックが入っていません。\nそれでもよろしいでしょうか？")){
+					return;
+				}
+			}
+			if(document.getElementById("season_dropdown").textContent === "全時間"){
+				if(!window.confirm("シーズンが「全時間」になっています。\nそれでもよろしいでしょうか？")){
+					return;
+				}
+			}
+			bk.setAttribute("inert", true);
 			const text = document.getElementById("_____loadingText");
 			text.innerText = `${document.getElementById("season_dropdown").textContent}のカスタムを取得中…\nしばらくお待ち下さい。`;
 			text.classList.remove("hiddenContent");
@@ -252,6 +274,7 @@ bk.append(bgs);
 				await nextPage(aho);
 			}
 			text.classList.add("hiddenContent");
+			bk.removeAttribute("inert");
 		});
 		footer.append(button);
 	}
@@ -269,22 +292,33 @@ await Wait.add();	/*終わるボタン押下まで待ち*/
 
 bgs.classList.add("hiddenContent");
 
+function calcOisisa(level){
+/*
+	美味しさ = 密度^3 * sqrt(幅 * 高さ)
+*/
 
-const limit = Number(document.getElementById("______limitScore").value);
-let extDatas = [...new Set(putDatas)];
-extDatas = extDatas.map((level) => {
 	const [haba, takasa, bakudan] = level.match(/\d+/g).map((exp) => Number(exp));
 	const score = (bakudan * 100 / (haba * takasa)) ** 3 * Math.sqrt(haba * takasa);
+	return score;
+}
+let extDatas = [...new Set(putDatas)];
+extDatas = extDatas.map((level) => {
 	const temp = [
 		level,
-		Math.floor(score),
+		Math.floor(calcOisisa(level)),
 	];
 	return temp;
 });
+const limit = Number(document.getElementById("______limitScore").value);
 extDatas = extDatas.filter((data) => data[1] >= limit);
 extDatas.sort((a, b) => a[1] - b[1]);
 extDatas = extDatas.map((data, index) => {
-	return `${index + 1}\t${data[1]}\thttps://minesweeper.online/ja/start/${data[0]}`;
+	const temp = [
+		index + 1,
+		data[1],
+		`https://minesweeper.online/ja/start/${data[0]}`,
+	];
+	return temp.join("\t");
 });
 
 
@@ -314,14 +348,93 @@ bk.append(eds);
 		{
 			const button = document.createElement("button");
 			button.type = "button";
-			button.textContent = "自分用メモに貼る";
-			button.addEventListener("click", ()=>{
-				bk.remove();
+			button.textContent = "自分用メモに投稿する📒";
+			button.addEventListener("click", async()=>{
+				button.textContent = "メモに貼っています…⌛️";
+				bk.setAttribute("inert", true);
+				await new Promise((resolve) => {
+					const temp = textarea.value.split("\n");
+					temp.unshift("⏬カスタム連勝スクリプト⏬");
+					temp.push("⏫カスタム連勝スクリプト⏫");
+					new SendMemo({
+						"memos": temp,
+						"callback": function(){
+							resolve();
+						},
+					});
+				});
+				button.textContent = "メモに投稿しました！😊";
+				bk.removeAttribute("inert");
+				setTimeout(() => {
+					button.textContent = "自分用メモに投稿する📒";
+				}, 3000);
+				
 			});
 			footer.append(button);
 		}
 	}
 }
+
+
+class SendMemo{
+	constructor(param){
+		this.memos = param["memos"];
+		this.callback = param["callback"];
+		this.start();
+	}
+	start(){
+		const iframe = document.createElement("iframe");
+		iframe.setAttribute("src", "https://minesweeper.online/ja/chat");
+		iframe.style = "height: 100%; width: 100%";
+		document.body.append(iframe);
+		iframe.addEventListener("load", () => {
+			this.main(iframe.contentWindow.document);
+		});
+		this.iframe = iframe;
+	}
+	end(){
+		this.iframe.remove();
+		this?.callback();
+	}
+	main(document){
+		const target = document.body;
+		const observer = new MutationObserver(async(mutations) => {
+			const tar = mutations[0].target;
+/*
+			console.log(tar);
+*/
+			if(tar.id.includes("chat_tab_count_")){
+				const memo = document.querySelector("img[src='/img/chat/notes.svg']");
+				if(!memo){
+					alert("自分用メモ用意してね");
+					return;
+				}
+				memo.click();
+			}
+			if(tar.id.includes("chat_channel_")){
+				setTimeout(async() => {
+					for(let i = 0; i < this.memos.length; i++){
+						this.send(document, this.memos[i]);
+						await Wait.time(0.5);
+					}
+					this.end();
+				}, 100);
+				observer.disconnect();
+			}
+		});
+		observer.observe(target, {
+			characterData: true,	/*テキストノードの変化を監視*/
+			childList: true,	/*子ノードの変化を監視*/
+			subtree: true,	/*子孫ノードも監視対象に含める*/
+		});
+	}
+	send(document, msg){
+		document.getElementById("chat_new_message").value = msg;
+		document.getElementById("chat_send_button").click();
+	}
+}
+
+
 
 
 
