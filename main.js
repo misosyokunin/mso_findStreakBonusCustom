@@ -150,6 +150,14 @@ function aho(){
 
 /*＝＝＝＝＝＝＝＝＝＝【ユーザー操作】＝＝＝＝＝＝＝＝＝＝*/
 
+function toggleInertMsoContents(){	/*スクリプト実行中は他のページへ移動する機能を制限させる*/
+	document.querySelector(".sidebar-nav").toggleAttribute("inert");
+	document.querySelector(".yaybar").toggleAttribute("inert");
+	document.querySelector("#header").toggleAttribute("inert");
+	document.querySelector(".socials").toggleAttribute("inert");
+}
+toggleInertMsoContents();
+
 const STYLE = `
 #___________bk{
 	position: fixed;
@@ -292,6 +300,8 @@ await Wait.add();	/*終わるボタン押下まで待ち*/
 
 bgs.classList.add("hiddenContent");
 
+
+
 function calcOisisa(level){
 /*
 	美味しさ = 密度^3 * sqrt(幅 * 高さ)
@@ -342,6 +352,7 @@ bk.append(eds);
 				textarea.select();
 				document.execCommand("copy");
 				bk.remove();
+				toggleInertMsoContents();
 			});
 			footer.append(button);
 		}
@@ -350,21 +361,25 @@ bk.append(eds);
 			button.type = "button";
 			button.textContent = "自分用メモに投稿する📒";
 			button.addEventListener("click", async()=>{
-				button.textContent = "メモに貼っています…⌛️";
-				bk.setAttribute("inert", true);
+				const temp = textarea.value.split("\n");
+				const temp_len = temp.length;
+				button.innerText = `メモに投稿しています…⌛️\n0 / ${temp_len}`;
+				temp.unshift("⏬カスタム連勝スクリプト⏬");
+				temp.push("⏫カスタム連勝スクリプト⏫");
+				bk.toggleAttribute("inert");
 				await new Promise((resolve) => {
-					const temp = textarea.value.split("\n");
-					temp.unshift("⏬カスタム連勝スクリプト⏬");
-					temp.push("⏫カスタム連勝スクリプト⏫");
 					new SendMemo({
 						"memos": temp,
-						"callback": function(){
+						"sendCallback": function(index){
+							button.innerText = `メモに投稿しています…⌛️\n${index} / ${temp_len}`;
+						},
+						"endCallback": function(){
 							resolve();
 						},
 					});
 				});
 				button.textContent = "メモに投稿しました！😊";
-				bk.removeAttribute("inert");
+				bk.toggleAttribute("inert");
 				setTimeout(() => {
 					button.textContent = "自分用メモに投稿する📒";
 				}, 3000);
@@ -379,7 +394,8 @@ bk.append(eds);
 class SendMemo{
 	constructor(param){
 		this.memos = param["memos"];
-		this.callback = param["callback"];
+		this.sendCallback = param["sendCallback"];
+		this.endCallback = param["endCallback"];
 		this.start();
 	}
 	start(){
@@ -394,7 +410,7 @@ class SendMemo{
 	}
 	end(){
 		this.iframe.remove();
-		this?.callback();
+		this?.endCallback();
 	}
 	main(document){
 		const target = document.body;
@@ -416,6 +432,7 @@ class SendMemo{
 					for(let i = 0; i < this.memos.length; i++){
 						this.send(document, this.memos[i]);
 						await Wait.time(0.5);
+						this?.sendCallback(i);
 					}
 					this.end();
 				}, 100);
@@ -433,10 +450,5 @@ class SendMemo{
 		document.getElementById("chat_send_button").click();
 	}
 }
-
-
-
-
-
 
 })();
