@@ -84,44 +84,62 @@ const Wait = {
 };
 
 
-
-async function nextPage(callback){
-	const target = document.body;
-	const observer = new MutationObserver(async function (mutations) {
-		const tar = mutations[0].target;
-/*
-		console.log(tar);
-*/
-/*
-	ページネーションを操作するとstat_paginationが2回でる。
-	2回目のstat_paginationで起動させたい
-*/
-		if(tar.id === "stat_pagination"){
-			if(!isTwice){
-				isTwice = true;
-				return;
+class Pagination{
+	constructor(param){
+		this.paginationSelector = param["paginationSelector"];
+		this.mainFunc = param["mainFunc"];
+		this.endFunc = param["endFunc"];
+		
+		this.main();
+	}
+	async main(){
+		await this.start();
+		this.end();
+	}
+	async start(){
+		while(true){
+			this.mainFunc();
+			
+			const nextButton = document.querySelector(this.paginationSelector).querySelector(":scope > .next");
+			await new Promise((resolve) => setTimeout(resolve, 0.5 * 1000));
+			if(nextButton.classList.contains("disabled")){
+				break;
 			}
-			isTwice = false;
-			callback();
-			observer.disconnect();
-			Wait.release();
+			
+			await new Promise((resolve) => {
+				const target = document.body;
+				let toggleTwice = false;
+				const observer = new MutationObserver(async (mutations) => {
+					const tar = mutations[0].target;
+			/*
+					console.log(tar);
+			*/
+			/*
+				ページネーションを操作するとstat_paginationが2回でる。
+				2回目のstat_paginationで起動させたい
+			*/
+					if(tar.matches(this.paginationSelector)){
+						toggleTwice = !toggleTwice;
+						if(toggleTwice){
+							return;
+						}
+						observer.disconnect();
+						resolve();
+					}
+				});
+				observer.observe(target, {
+					characterData: true,	/*テキストノードの変化を監視*/
+					childList: true,	/*子ノードの変化を監視*/
+					subtree: true,	/*子孫ノードも監視対象に含める*/
+				});
+				
+				nextButton.click();
+			});
+			
 		}
-	});
-	observer.observe(target, {
-		characterData: true,	/*テキストノードの変化を監視*/
-		childList: true,	/*子ノードの変化を監視*/
-		subtree: true,	/*子孫ノードも監視対象に含める*/
-	});
-	
-	const nextButton = document.querySelector("#stat_pagination > .next");
-	await Wait.time(0.5);
-	if(nextButton.classList.contains("disabled")){
-		isLooping = false;
-		observer.disconnect();
-		return;
-	}else{
-		nextButton.click();
-		await Wait.add();
+	}
+	end(){
+		this.endFunc?.();
 	}
 }
 
@@ -131,9 +149,6 @@ function aho(){
 		const tr = trs[i];
 		const tds = tr.querySelectorAll("td");
 		if(tds[1].textContent === " "){	/*空行を弾く*/
-/*
-			console.log("break");
-*/
 			break;
 		}
 		const level = tds[0].textContent;
@@ -224,7 +239,6 @@ const style = document.createElement("style");
 style.innerHTML = STYLE;
 bk.append(style);
 
-
 const bgs = document.createElement("div");
 bgs.id = "_______beginScreen";
 bk.append(bgs);
@@ -275,12 +289,14 @@ bk.append(bgs);
 			const text = document.getElementById("_____loadingText");
 			text.innerText = `${document.getElementById("season_dropdown").textContent}のカスタムを取得中…\nしばらくお待ち下さい。`;
 			text.classList.remove("hiddenContent");
-			isLooping = true;
-			isTwice = false;
-			aho();
-			while(isLooping){
-				await nextPage(aho);
-			}
+			await new Promise((resolve) => {
+				const pagination = new Pagination({
+					"paginationSelector": "#stat_pagination",
+					"mainFunc": aho,
+					"endFunc": resolve,
+				});
+			});
+			
 			text.classList.add("hiddenContent");
 			bk.removeAttribute("inert");
 		});
@@ -290,9 +306,6 @@ bk.append(bgs);
 }
 
 const putDatas = [];
-let isLooping = true;
-let isTwice = false;
-
 await Wait.add();	/*終わるボタン押下まで待ち*/
 
 
