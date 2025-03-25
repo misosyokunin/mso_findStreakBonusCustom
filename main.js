@@ -216,18 +216,17 @@ const STYLE = `
 	padding: 5%;
 }
 #________edstextarea{
-	height: 90%;
+	height: 80%;
 	width: 90%;
 }
 #______edsfooter{
-	height: 10%;
-	display: flex;
-	justify-content: space-around;
+	height: 20%;
 	width: 100%;
 	padding: 0px;
-}
-#______edsfooter > *{
-	width: 100%
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	grid-template-rows: repeat(2, 1fr);
+	gap: 0px;
 }
 `;
 
@@ -313,13 +312,10 @@ await Wait.add();	/*終わるボタン押下まで待ち*/
 
 bgs.classList.add("hiddenContent");
 
-
-
 function calcOisisa(level){
 /*
 	美味しさ = 密度^3 * sqrt(幅 * 高さ)
 */
-
 	const [haba, takasa, bakudan] = level.match(/\d+/g).map((exp) => Number(exp));
 	const score = (bakudan * 100 / (haba * takasa)) ** 3 * Math.sqrt(haba * takasa);
 	return score;
@@ -360,11 +356,72 @@ bk.append(eds);
 		{
 			const button = document.createElement("button");
 			button.type = "button";
+			button.textContent = "再採番";
+			button.addEventListener("click", ()=>{
+				const strs = textarea.value.split("\n");
+				let index = 0;
+				const newstrs = strs.map((str) => {
+					if(!str.match(/^\d+/)){
+						return str;
+					}
+					index++;
+					return str.replace(/^\d+/, index);
+				});
+				textarea.value = newstrs.join("\n");
+			});
+			footer.append(button);
+		}
+		{
+			const button = document.createElement("button");
+			button.type = "button";
+			button.defaultText = "複雑さなどをセット🕰";
+			button.textContent = button.defaultText;
+			button.addEventListener("click", async()=>{
+				bk.toggleAttribute("inert");
+				const strs = textarea.value.split("\n");
+				const strs_len = strs.length;
+				const func = function(index){
+					button.innerText = `カスタムデータを取得しています…⌛️\n${index} / ${strs_len}`;
+				};
+				func(0);
+				let CustomIframe = document.getElementById("_________customIframe");
+				if(!CustomIframe){
+					let custom_constructor;
+					await new Promise((resolve) => {
+						custom_constructor = new GetCustomData({
+							"iframeID": "_________customIframe",
+							"startedCallback": resolve,
+						});
+					});
+					CustomIframe = document.getElementById("_________customIframe");
+					CustomIframe._methods = custom_constructor;
+				}
+				for(let i = 0; i < strs_len; i++){
+					func(i);
+					const level = strs[i].match(/\d+x\d+\/\d+/)?.[0];
+					if(level){
+						const ro = await CustomIframe._methods.get(level);
+						strs[i] = strs[i] + "\t" + ro.join("\t");
+					};
+				}
+				textarea.value = strs.join("\n");
+				button.textContent = "カスタムデータをセットしました！😊";
+				bk.toggleAttribute("inert");
+				setTimeout(() => {
+					button.textContent = button.defaultText;
+				}, 3000);
+			});
+			footer.append(button);
+		}
+		{
+			const button = document.createElement("button");
+			button.type = "button";
 			button.textContent = "コピーして終わる";
 			button.addEventListener("click", ()=>{
 				textarea.select();
 				document.execCommand("copy");
 				bk.remove();
+				document.getElementById("_________customIframe")?.remove();
 				toggleInertMsoContents();
 			});
 			footer.append(button);
@@ -372,29 +429,29 @@ bk.append(eds);
 		{
 			const button = document.createElement("button");
 			button.type = "button";
-			button.textContent = "自分用メモに投稿する📒";
+			button.defaultText = "自分用メモに投稿する📒";
+			button.textContent = button.defaultText;
 			button.addEventListener("click", async()=>{
 				const temp = textarea.value.split("\n");
 				const temp_len = temp.length;
-				button.innerText = `メモに投稿しています…⌛️\n0 / ${temp_len}`;
 				temp.unshift("⏬カスタム連勝スクリプト⏬");
 				temp.push("⏫カスタム連勝スクリプト⏫");
+				const func = function(index){
+					button.innerText = `メモに投稿しています…⌛️\n${index} / ${temp_len}`;
+				};
+				func(0);
 				bk.toggleAttribute("inert");
 				await new Promise((resolve) => {
 					new SendMemo({
 						"memos": temp,
-						"sendCallback": function(index){
-							button.innerText = `メモに投稿しています…⌛️\n${index} / ${temp_len}`;
-						},
-						"endCallback": function(){
-							resolve();
-						},
+						"sendCallback": func,
+						"endCallback": resolve,
 					});
 				});
 				button.textContent = "メモに投稿しました！😊";
 				bk.toggleAttribute("inert");
 				setTimeout(() => {
-					button.textContent = "自分用メモに投稿する📒";
+					button.textContent = button.defaultText;
 				}, 3000);
 				
 			});
@@ -403,6 +460,80 @@ bk.append(eds);
 	}
 }
 
+class GetCustomData{
+	constructor(param){
+		this.iframeID = param["iframeID"];
+		this.startedCallback = param["startedCallback"];
+		this.start();
+	}
+	start(){
+		const iframe = document.createElement("iframe");
+		iframe.setAttribute("src", "https://minesweeper.online/ja/game/4426646346");
+		iframe.style = "height: 100%; width: 100%;";
+		iframe.id = this.iframeID;
+		document.body.append(iframe);
+		iframe.addEventListener("load", () => {
+			const document = iframe.contentWindow.document;
+			const target = document.body;
+			const observer = new MutationObserver(async(mutations) => {
+				const tar = mutations[0].target;
+/*
+				console.log(tar);
+*/
+				if(tar.id === "page"){
+					this.startedCallback?.();
+					observer.disconnect();
+				}
+			});
+			observer.observe(target, {
+				characterData: true,	/*テキストノードの変化を監視*/
+				childList: true,	/*子ノードの変化を監視*/
+				subtree: true,	/*子孫ノードも監視対象に含める*/
+			});
+			
+		});
+		this.iframe = iframe;
+	}
+	async get(level){
+		const document = this.iframe.contentWindow.document;
+		
+		const [haba, takasa, bakudan] = level.match(/\d+/g);
+		document.getElementById("custom_width").value = haba;
+		document.getElementById("custom_height").value = takasa;
+		document.getElementById("custom_mines").value = bakudan;
+		
+		let ro;
+		return await new Promise((resolve) => {
+			const target = document.body;
+			const observer = new MutationObserver(async(mutations) => {
+				const tar = mutations[0].target;
+/*
+				console.log(tar);
+*/
+				if(tar.id === "GameBottomPanelBlock"){
+					await new Promise((resolve) => {
+						setTimeout(resolve, 1000);
+					});
+					const content = document.getElementById("difficulty_popover").dataset.content;
+					ro = [
+						content.match(/(?<=爆弾の密度：<span class\="">)\d+\.\d+%/)[0],
+						content.match(/(?<=複雑さ：)\d+/)[0],
+						content.match(/(?<=勝率：)\d+\.\d+%/)[0],
+					];
+					observer.disconnect();
+					resolve(ro);
+				}
+			});
+			observer.observe(target, {
+				characterData: true,	/*テキストノードの変化を監視*/
+				childList: true,	/*子ノードの変化を監視*/
+				subtree: true,	/*子孫ノードも監視対象に含める*/
+			});
+			
+			document.querySelector(".btn-custom-update").click();
+		});
+	}
+}
 
 class SendMemo{
 	constructor(param){
@@ -436,6 +567,8 @@ class SendMemo{
 				const memo = document.querySelector("img[src='/img/chat/notes.svg']");
 				if(!memo){
 					alert("自分用メモ用意してね");
+					observer.disconnect();
+					this.end();
 					return;
 				}
 				memo.click();
