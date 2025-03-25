@@ -158,6 +158,9 @@ function aho(){
 		if(tds[0].querySelector(":scope > img")){	/*複雑さ1000以上を弾く*/
 			continue;
 		}
+		if(tds[2].firstChild.textContent === "0"){	/*未勝利を弾く*/
+			continue;
+		}
 		putDatas.push(level.match(/(?<=\().+(?=\))/)[0]);	/*盤面サイズだけ取り出す*/
 	}
 
@@ -516,9 +519,9 @@ class GetCustomData{
 					});
 					const content = document.getElementById("difficulty_popover").dataset.content;
 					ro = [
-						content.match(/(?<=爆弾の密度：<span class\="">)\d+\.\d+%/)[0],
+						content.match(/(?<=爆弾の密度：<span class\="">)\d+\?.\d+%/)[0],
 						content.match(/(?<=複雑さ：)\d+/)[0],
-						content.match(/(?<=勝率：)\d+\.\d+%/)[0],
+						content.match(/(?<=勝率：)\d+\.?\d+%/)[0],
 					];
 					observer.disconnect();
 					resolve(ro);
