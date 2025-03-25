@@ -287,7 +287,7 @@ bk.append(bgs);
 					return;
 				}
 			}
-			bk.setAttribute("inert", true);
+			footer.setAttribute("inert", true);
 			const text = document.getElementById("_____loadingText");
 			text.innerText = `${document.getElementById("season_dropdown").textContent}のカスタムを取得中…\nしばらくお待ち下さい。`;
 			text.classList.remove("hiddenContent");
@@ -300,7 +300,7 @@ bk.append(bgs);
 			});
 			
 			text.classList.add("hiddenContent");
-			bk.removeAttribute("inert");
+			footer.removeAttribute("inert");
 		});
 		footer.append(button);
 	}
