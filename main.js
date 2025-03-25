@@ -380,7 +380,7 @@ bk.append(eds);
 			button.defaultText = "複雑さなどをセット🕰";
 			button.textContent = button.defaultText;
 			button.addEventListener("click", async()=>{
-				bk.toggleAttribute("inert");
+				footer.toggleAttribute("inert");
 				const strs = textarea.value.split("\n");
 				const strs_len = strs.length;
 				const func = function(index){
@@ -409,7 +409,7 @@ bk.append(eds);
 				}
 				textarea.value = strs.join("\n");
 				button.textContent = "カスタムデータをセットしました！😊";
-				bk.toggleAttribute("inert");
+				footer.toggleAttribute("inert");
 				setTimeout(() => {
 					button.textContent = button.defaultText;
 				}, 3000);
@@ -443,7 +443,7 @@ bk.append(eds);
 					button.innerText = `メモに投稿しています…⌛️\n${index} / ${temp_len}`;
 				};
 				func(0);
-				bk.toggleAttribute("inert");
+				footer.toggleAttribute("inert");
 				await new Promise((resolve) => {
 					new SendMemo({
 						"memos": temp,
@@ -452,7 +452,7 @@ bk.append(eds);
 					});
 				});
 				button.textContent = "メモに投稿しました！😊";
-				bk.toggleAttribute("inert");
+				footer.toggleAttribute("inert");
 				setTimeout(() => {
 					button.textContent = button.defaultText;
 				}, 3000);
@@ -518,8 +518,9 @@ class GetCustomData{
 						setTimeout(resolve, 1000);
 					});
 					const content = document.getElementById("difficulty_popover").dataset.content;
+					console.log(content);
 					ro = [
-						content.match(/(?<=爆弾の密度：<span class\="">)\d+\?.\d+%/)[0],
+						content.match(/(?<=爆弾の密度：<span class\="">)\d+\.?\d+%/)[0],
 						content.match(/(?<=複雑さ：)\d+/)[0],
 						content.match(/(?<=勝率：)\d+\.?\d+%/)[0],
 					];
