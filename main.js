@@ -518,7 +518,6 @@ class GetCustomData{
 						setTimeout(resolve, 1000);
 					});
 					const content = document.getElementById("difficulty_popover").dataset.content;
-					console.log(content);
 					ro = [
 						content.match(/(?<=爆弾の密度：<span class\="">)\d+\.?\d+%/)[0],
 						content.match(/(?<=複雑さ：)\d+/)[0],
