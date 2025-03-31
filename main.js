@@ -378,7 +378,7 @@ let extDatas = [...new Set(putDatas)];
 extDatas = extDatas.map((level) => {
 	const temp = [
 		level,
-		Number(calcOisisa(level).toFixed(2)),
+		calcOisisa(level),
 	];
 	return temp;
 });
@@ -388,7 +388,7 @@ extDatas.sort((a, b) => a[1] - b[1]);
 extDatas = extDatas.map((data, index) => {
 	const temp = [
 		index + 1,
-		data[1],
+		data[1].toFixed(2),
 		`https://minesweeper.online/ja/start/${data[0]}`,
 	];
 	return temp.join("\t");
