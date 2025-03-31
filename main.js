@@ -378,7 +378,7 @@ let extDatas = [...new Set(putDatas)];
 extDatas = extDatas.map((level) => {
 	const temp = [
 		level,
-		Number(score.toFixed(2)),
+		Number(calcOisisa(level).toFixed(2)),
 	];
 	return temp;
 });
