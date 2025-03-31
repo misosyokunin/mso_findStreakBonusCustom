@@ -83,6 +83,53 @@ const Wait = {
 	},
 };
 
+const WakeLock = new class{
+	#wakeLock;
+	constructor(){
+		this.isSupported = "wakeLock" in navigator;
+		this.check();
+	}
+	check(showMessage = false){
+		if(showMessage){
+			if(this.isSupported){
+				console.log("起動ロック API に対応しています。");
+			}else{
+				console.log("このブラウザーは起動ロックに対応していません。");
+			}
+		}
+		return this.isSupported;
+	}
+	async start(){
+		if(!this.check(false)){
+			return;
+		}
+		this.#wakeLock = null;
+		try {
+			this.#wakeLock = await navigator.wakeLock.request("screen");
+			console.log("起動ロックが有効です。");
+			this.#wakeLock.addEventListener("release", () => {
+				console.log("起動ロックが解放されました");
+			});
+			document.addEventListener("visibilitychange", this.#windowEvent.bind(this));
+		} catch (err) {
+			console.log(`${err.name}, ${err.message}`);
+		}
+	}
+	end(){
+		if(!this.check(false)){
+			return;
+		}
+		this.#wakeLock?.release().then(() => {
+			this.#wakeLock = null;
+		});
+		document.removeEventListener("visibilitychange", this.#windowEvent.bind(this));
+	}
+	async #windowEvent(){
+		if (this.#wakeLock !== null && document.visibilityState === "visible") {
+			this.start();
+		}
+	}
+};
 
 class Pagination{
 	constructor(param){
@@ -175,6 +222,7 @@ function toggleInertMsoContents(){	/*スクリプト実行中は他のページ�
 	document.querySelector(".socials").toggleAttribute("inert");
 }
 toggleInertMsoContents();
+WakeLock.start();
 
 const STYLE = `
 #___________bk{
@@ -269,7 +317,7 @@ bk.append(bgs);
 		input.type = "number";
 		input.min = 0;
 		input.step = 1;
-		input.value = 200000;
+		input.value = 100000;
 		footer.append(input);
 	}
 	{
@@ -317,10 +365,14 @@ bgs.classList.add("hiddenContent");
 
 function calcOisisa(level){
 /*
-	美味しさ = 密度^3 * sqrt(幅 * 高さ)
+	美味しさ = 密度^3 * sqrt(幅 * 高さ) * cbrt(max(幅, 高さ) / min(幅,高さ));
 */
 	const [haba, takasa, bakudan] = level.match(/\d+/g).map((exp) => Number(exp));
-	const score = (bakudan * 100 / (haba * takasa)) ** 3 * Math.sqrt(haba * takasa);
+	const mitudo = (bakudan * 100 / (haba * takasa));
+	let score = mitudo**3 * Math.sqrt(haba * takasa) * Math.cbrt(Math.max(haba, takasa) / Math.min(haba, takasa));
+	score = score ** 5;
+	score = score / 10e+21;
+	score = Number(score.toFixed(2));
 	return score;
 }
 let extDatas = [...new Set(putDatas)];
@@ -426,6 +478,7 @@ bk.append(eds);
 				bk.remove();
 				document.getElementById("_________customIframe")?.remove();
 				toggleInertMsoContents();
+				WakeLock.end();
 			});
 			footer.append(button);
 		}
