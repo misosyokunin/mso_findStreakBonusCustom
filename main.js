@@ -372,14 +372,13 @@ function calcOisisa(level){
 	let score = mitudo**3 * Math.sqrt(haba * takasa) * Math.cbrt(Math.max(haba, takasa) / Math.min(haba, takasa));
 	score = score ** 5;
 	score = score / 10e+21;
-	score = Number(score.toFixed(2));
 	return score;
 }
 let extDatas = [...new Set(putDatas)];
 extDatas = extDatas.map((level) => {
 	const temp = [
 		level,
-		Math.floor(calcOisisa(level)),
+		Number(score.toFixed(2)),
 	];
 	return temp;
 });
