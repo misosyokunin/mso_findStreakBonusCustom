@@ -146,9 +146,12 @@
 		async start(){
 			while(true){
 				this.mainFunc();
-				
-				const nextButton = document.querySelector(this.paginationSelector).querySelector(":scope > .next");
 				await new Promise((resolve) => setTimeout(resolve, 0.5 * 1000));
+				
+				const nextButton = document.querySelector(this.paginationSelector)?.querySelector(":scope > .next");
+				if(!nextButton){
+					break;
+				}
 				if(nextButton.classList.contains("disabled")){
 					break;
 				}
