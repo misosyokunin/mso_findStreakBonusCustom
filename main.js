@@ -57,6 +57,7 @@ Writing:
 					console.log(tar);
 */
 					if(tar.id === "aggregate"){
+						observer.disconnect();
 						resolve();
 					}
 				});
@@ -229,7 +230,7 @@ function aho(){
 		if(tds[2].firstChild.textContent === "0"){	/*未勝利を弾く*/
 			continue;
 		}
-		putDatas.push(level.match(/(?<=\().+(?=\))/)[0]);	/*盤面サイズだけ取り出す*/
+		levels.push(level.match(/(?<=\().+(?=\))/)[0]);	/*盤面サイズだけ取り出す*/
 	}
 
 }
@@ -376,7 +377,7 @@ bk.append(bgs);
 
 }
 
-const putDatas = [];
+const levels = [];
 await Wait.add();	/*終わるボタン押下まで待ち*/
 
 
@@ -395,25 +396,29 @@ function calcOisisa(level){
 	score = score / 10e+21;
 	return score;
 }
-let extDatas = [...new Set(putDatas)];
-extDatas = extDatas.map((level) => {
-	const temp = [
-		level,
-		calcOisisa(level),
-	];
-	return temp;
-});
-const limit = Number(document.getElementById("______limitScore").value);
-extDatas = extDatas.filter((data) => data[1] >= limit);
-extDatas.sort((a, b) => a[1] - b[1]);
-extDatas = extDatas.map((data, index) => {
-	const temp = [
-		index + 1,
-		data[1].toFixed(2),
-		`https://minesweeper.online/ja/start/${data[0]}`,
-	];
-	return temp.join("\t");
-});
+
+function setTextareaValue(levels){
+	let extDatas = [...new Set(levels)];
+	extDatas = extDatas.map((level) => {
+		const temp = [
+			level,
+			calcOisisa(level),
+		];
+		return temp;
+	});
+	const limit = Number(document.getElementById("______limitScore").value);
+	extDatas = extDatas.filter((data) => data[1] >= limit);
+	extDatas.sort((a, b) => a[1] - b[1]);
+	extDatas = extDatas.map((data, index) => {
+		const temp = [
+			index + 1,
+			data[1].toFixed(2),
+			`https://minesweeper.online/ja/start/${data[0]}`,
+		];
+		return temp.join("\t");
+	});
+	return extDatas.join("\n");
+}
 
 
 const eds = document.createElement("div");
@@ -422,7 +427,7 @@ bk.append(eds);
 {
 	const textarea = document.createElement("textarea");
 	textarea.id = "________edstextarea";
-	textarea.value = extDatas.join("\n");
+	textarea.value = setTextareaValue(levels);
 	eds.append(textarea);
 	{
 		const footer = document.createElement("footer");
@@ -431,27 +436,21 @@ bk.append(eds);
 		{
 			const button = document.createElement("button");
 			button.type = "button";
-			button.textContent = "再採番";
+			button.textContent = "再整形";
 			button.addEventListener("click", ()=>{
 				const strs = textarea.value.split("\n");
-				let index = 0;
-				const newstrs = strs.map((str) => {
-					if(!str.match(/^\d+/)){
-						return str;
-					}
-					index++;
-					return str.replace(/^\d+/, index);
-				});
-				textarea.value = newstrs.join("\n");
+				const levels = strs.filter((str) => str.match(/\d+x\d+\/\d+/)).map((str) => str.match(/\d+x\d+\/\d+/)[0]);
+				textarea.value = setTextareaValue(levels);
+				changeDelayText(button, "データを再整形しました！😊");
 			});
 			footer.append(button);
 		}
 		{
 			const button = document.createElement("button");
 			button.type = "button";
-			button.defaultText = "複雑さなどをセット🕰";
-			button.textContent = button.defaultText;
+			button.textContent = "複雑さなどをセット🕰";
 			button.addEventListener("click", async()=>{
+				const defaultText = button.textContent;
 				footer.toggleAttribute("inert");
 				const strs = textarea.value.split("\n");
 				const strs_len = strs.length;
@@ -480,11 +479,8 @@ bk.append(eds);
 					};
 				}
 				textarea.value = strs.join("\n");
-				button.textContent = "カスタムデータをセットしました！😊";
+				changeDelayText(button, "カスタムデータをセットしました！😊", defaultText);
 				footer.toggleAttribute("inert");
-				setTimeout(() => {
-					button.textContent = button.defaultText;
-				}, 3000);
 			});
 			footer.append(button);
 		}
@@ -505,9 +501,9 @@ bk.append(eds);
 		{
 			const button = document.createElement("button");
 			button.type = "button";
-			button.defaultText = "自分用メモに投稿する📒";
-			button.textContent = button.defaultText;
+			button.textContent = "自分用メモに投稿する📒";
 			button.addEventListener("click", async()=>{
+				const defaultText = button.textContent;
 				const temp = textarea.value.split("\n");
 				const temp_len = temp.length;
 				temp.unshift("⏬カスタム連勝スクリプト⏬");
@@ -524,16 +520,22 @@ bk.append(eds);
 						"endCallback": resolve,
 					});
 				});
-				button.textContent = "メモに投稿しました！😊";
+				changeDelayText(button, "メモに投稿しました！😊", defaultText);
 				footer.toggleAttribute("inert");
-				setTimeout(() => {
-					button.textContent = button.defaultText;
-				}, 3000);
-				
 			});
 			footer.append(button);
 		}
 	}
+}
+
+function changeDelayText(tar, newtext, defaultText, time = 2){
+	if(!tar.defaultText){
+		tar.defaultText = defaultText ?? tar.textContent;
+	}
+	tar.textContent = newtext;
+	setTimeout(() => {
+		tar.textContent = tar.defaultText;
+	}, time * 1000);
 }
 
 class GetCustomData{
