@@ -38,6 +38,32 @@ Writing:
 なお、他言語でも同じようなことができると思います。
 ただ、このスクリプトのままでは動きませんので、適宜変えてください（「ja」や抽出文言）。
 */
+class WaitScreen{
+	constructor(param){
+		this.main = param["main"];
+	}
+	start(){
+		return new Promise((resolve) => {
+			const target = document.body;
+			this.observer = new MutationObserver(async (mutations) => {
+				const tar = mutations[0].target;
+				this.main(tar);
+			});
+			this.observer.observe(target, {
+				characterData: true,	/*テキストノードの変化を監視*/
+				childList: true,	/*子ノードの変化を監視*/
+				subtree: true,	/*子孫ノードも監視対象に含める*/
+			});
+			this.end = () => {
+				this.observer.disconnect();
+				resolve();
+			}
+		});
+	}
+	finish(){
+		this.observer?.disconnect();
+	}
+}
 
 /*＝＝＝＝＝＝＝＝＝＝【スクリプト実行確認】＝＝＝＝＝＝＝＝＝＝*/
 {
@@ -49,25 +75,18 @@ Writing:
 	}else{
 		const playerID = document.querySelector("#header .profile-link")?.href.match(/\d+/)[0];
 		if(playerID){
-			await new Promise((resolve) => {
-				const target = document.body;
-				const observer = new MutationObserver(async (mutations) => {
-					const tar = mutations[0].target;
+			const ws = new WaitScreen({
+				"main": function(tar){
 /*
 					console.log(tar);
 */
 					if(tar.id === "aggregate"){
-						observer.disconnect();
-						resolve();
+						this.end();
 					}
-				});
-				observer.observe(target, {
-					characterData: true,	/*テキストノードの変化を監視*/
-					childList: true,	/*子ノードの変化を監視*/
-					subtree: true,	/*子孫ノードも監視対象に含める*/
-				});
-				navigate(`statistics/${playerID}`);
+				},
 			});
+			window.navigate(`statistics/${playerID}`);	/*MSOで定義された関数*/
+			await ws.start();
 		}else{
 			const result = window.confirm(`${TAR_TITLE}ではありません。\n${TAR_TITLE}へ飛びますか？\n（ページ遷移後に再度このスクリプトを実行してください。）`);
 			if(result){
@@ -79,6 +98,8 @@ Writing:
 		}
 	}
 }
+
+
 
 /*＝＝＝＝＝＝＝＝＝＝【メイン処理】＝＝＝＝＝＝＝＝＝＝*/
 const Wait = {
